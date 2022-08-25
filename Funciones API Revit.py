@@ -48,11 +48,11 @@ def aLista(arg):
 
 def flatten(lista):
     """
-    Uso: Aplando de lista con multiples sub niveles.
+    Uso: Aplanado de lista con multiples sub niveles.
     """
     salida = []
     for x in lista:
-        if hasattr(x,"__iter__"):
+        if hasattr(x, "__iter__"):
             salida.extend(flatten(x))
         else:
             salida.append(x)
@@ -61,10 +61,8 @@ def flatten(lista):
 
 def profundidadLista1(lista):
     """
-    Uso:
-        Pregunta el nivel de profundidad de una lista.
-    Entrada:
-        lista <list>: Lista.
+    Uso: Pregunta el nivel de profundidad de una lista.
+    Entrada: lista <list>: Lista.
     Salida: Numero.
     """
     funcion = lambda sublista: isinstance(sublista, list) and max(map(
@@ -72,35 +70,74 @@ def profundidadLista1(lista):
     return funcion(lista)
 
 
+def unique_items(lista):
+    """
+    Uso: Crea una lista con los elementos unicos, mantiene el orden.
+    Entrada:
+        lista <List>
+    """
+    claves = []
+    for item in lista:
+        if item not in claves:
+            claves.append(item)
+
+
+def agrupar_por_clave(lista, indice=0):
+    """
+    Uso: Agrupa una lista por una clave en el indice especificado.
+    Entrada:
+        lista <List>
+        indice <Integer>: indice de la clave en la lista.
+    Salida: lista <List> agrupada por clave.
+    """
+    listaIndice = map(lambda x: x[indice], lista)
+    values = unique_items(listaIndice)
+    return [[y for y in lista if y[indice] == x] for x in values]
+
+
+def agrupar_por_lista(lista, listaClave):
+    """
+    Uso: Agrupa una lista por una lista de claves.
+    Entrada:
+        lista <List>
+        listaClave <List>
+    Salida: lista <List> agrupada por clave.
+    """
+    lookup = {}  # lookup map
+    result = []
+    for k, l in zip(listaClave, lista):
+        if k not in lookup:
+            target = lookup[k] = [l]
+            result.append(target)
+        else:
+            lookup[k].append(l)
+    return result
+
+
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # Listados
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 def listado_builtincategory():
     """
-    Uso:
-    Entrada:
-    Salida:
+    Uso: Listado de las BuiltInCategory de Revit.
     """
-    return System.Enum.GetValues(BuiltInCategory)  # 1125
+    return System.Enum.GetValues(BuiltInCategory)
 
 
 def listado_builtinparameter():
     """
-    Uso:
-    Entrada:
-    Salida:
+    Uso: Listado de las BuiltInParameter de Revit.
     """
-    return System.Enum.GetValues(BuiltInParameter)  # 1125
+    return System.Enum.GetValues(BuiltInParameter)
 
 
 def listado_categorias():
     """
     Uso: Genera un diccionario con todas las categorias de Revit.
-    Entrada: Sin argumentos
-    Salida: Diccionario(nombre, categoria)
+    Salida: Diccionario(clave: nombre, valor: categoria)
     """
     diccionario = {}
-    categorias = doc.Settings.Categories  # 351
+    categorias = doc.Settings.Categories
     for cat in categorias:
         diccionario[cat.Name] = cat
     return diccionario
@@ -123,6 +160,11 @@ def listado_plantillas_vista(documento=doc):
 # Filtros
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 def bic_por_nombreVisual(nombre):
+    """
+    Uso: Busca la BuiltInCategory que coincide con el nombre dado.
+    Entrada: Nombre de la categoria a buscar <string>.
+    Salida: BuiltInCategory <BuiltInCategory>.
+    """
     values = System.Enum.GetValues(BuiltInCategory)
 
     def catch(default, function, *args, **kwargs):
@@ -135,6 +177,11 @@ def bic_por_nombreVisual(nombre):
 
 
 def bic_por_nombreBuilt(nombre):
+    """
+    Uso: Busca la BuiltInCategory que coincide con el nombre dado.
+    Entrada: Nombre de la BuiltInCategory (a partir del punto) a buscar <string>.
+    Salida: BuiltInCategory <BuiltInCategory>.
+    """
     values = System.Enum.GetValues(BuiltInCategory)
     names = System.Enum.GetNames(BuiltInCategory)
 
@@ -143,6 +190,11 @@ def bic_por_nombreBuilt(nombre):
 
 
 def bip_por_nombreVisual(nombre):
+    """
+    Uso: Busca el BuiltInParameter que coincide con el nombre dado.
+    Entrada: Nombre del parametro a buscar <string>.
+    Salida: BuiltInParameter <BuiltInParameter>.
+    """
     values = System.Enum.GetValues(BuiltInParameter)
 
     def catch(default, function, *args, **kwargs):
@@ -155,6 +207,11 @@ def bip_por_nombreVisual(nombre):
 
 
 def bip_por_nombreBuilt(nombre):
+    """
+    Uso: Busca el BuiltInParameter que coincide con el nombre dado.
+    Entrada: Nombre del BuiltInParameter (a partir del punto) a buscar <string>.
+    Salida: BuiltInParameter <BuiltInParameter>.
+    """
     values = System.Enum.GetValues(BuiltInParameter)
     names = System.Enum.GetNames(BuiltInParameter)
 
@@ -164,11 +221,9 @@ def bip_por_nombreBuilt(nombre):
 
 def parUser_por_nombre(nombre):
     """
-    Uso:
-        Obtiene un parametro de usuario por nombre.
-    Entrada:
-        nombre <str>: Nombre del parametro.
-    Salida: Shared Parameter
+    Uso: Obtiene un parametro de usuario por nombre.
+    Entrada: nombre <str>: Nombre del parametro.
+    Salida: Id del parametro <ElementId>.
     """
     iterador = doc.ParameterBindings().ForwardIterator()
     while iterador.MoveNext():
@@ -179,8 +234,7 @@ def parUser_por_nombre(nombre):
 
 def filtroParametroPers(nombre, valor):
     """
-    Uso:
-        Crea un filtro para el FilteredElementCollector
+    Uso: Crea un filtro para el FilteredElementCollector.
     Entrada:
         nombre <str>: Nombre del parametro.
         valor <str>: Valor del parametro.
@@ -398,6 +452,8 @@ def elimina_tildes(texto):
     return s
 
 
+
+
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # Utilidades VISTAS
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -443,7 +499,7 @@ def id_tipo_familia_vista():
 
 def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
     """
-    Uso: Se eliminan las vistas sin uso, teniendo en cuenta anfitrio de vistas 
+    Uso: Se eliminan las vistas sin uso, teniendo en cuenta anfitrio de vistas.
     dependientes, de llamada...
     Entrada: inicio <boolean>
     Salida: Resultado
@@ -929,3 +985,4 @@ def convertir_XYZ_unidad_interna(punto):
     """
     factor = unidades_modelo_a_internas_longitud(1)
     return punto.Multiply(factor)
+
