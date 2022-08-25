@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 ###########################################################
 # BIBLIOTECAS
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -8,22 +9,21 @@ import clr  # CommonLanguage Runtime
 clr.AddReference('RevitAPI')
 import Autodesk
 from Autodesk.Revit.DB import *
+from Autodesk.DesignScript.Geometry import Line
 
 # Para trabajar con la RevitAPIUI
 clr.AddReference('RevitAPIUI')
-import Autodesk  # noqa: E402
 from Autodesk.Revit.UI import *
 
 # Para trabajar contra el documento y hacer transacciones
 clr.AddReference('RevitServices')
-import RevitServices
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
 
 # Identificadores
 doc = DocumentManager.Instance.CurrentDBDocument
 uiapp = DocumentManager.Instance.CurrentUIApplication  # interfaz
-uidoc = uiapp.ActiveUIDocument  # Para que el usuario interactue con el doc
+uidoc = uiapp.ActiveUIDocument  # Para que el usuario interactue con el doc.
 
 # Otras bibliotecas
 import System
@@ -35,7 +35,7 @@ from System.Collections.Generic import List  # Para generar iList
 # Operaciones con listas
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-def aLista(arg):
+def a_lista(arg):
     """
     Uso: Evita errores con la entrada de inputs.
     Me convierte a lista si no lo era.
@@ -48,23 +48,21 @@ def aLista(arg):
 
 def flatten(lista):
     """
-    Uso: Aplando de lista con multiples sub niveles.
+    Uso: Aplanado de lista con multiples sub niveles.
     """
     salida = []
     for x in lista:
-        if hasattr(x,"__iter__"):
+        if hasattr(x, "__iter__"):
             salida.extend(flatten(x))
         else:
             salida.append(x)
     return salida
 
 
-def profundidadLista1(lista):
+def profundidad_lista(lista):
     """
-    Uso:
-        Pregunta el nivel de profundidad de una lista.
-    Entrada:
-        lista <list>: Lista.
+    Uso: Pregunta el nivel de profundidad de una lista.
+    Entrada: lista <list>: Lista.
     Salida: Numero.
     """
     funcion = lambda sublista: isinstance(sublista, list) and max(map(
@@ -72,35 +70,98 @@ def profundidadLista1(lista):
     return funcion(lista)
 
 
+def unique_items(lista):
+    """
+    Uso: Crea una lista con los elementos unicos, mantiene el orden.
+    Entrada:
+        lista <List>
+    """
+    claves = []
+    for item in lista:
+        if item not in claves:
+            claves.append(item)
+    return claves
+
+
+def agrupar_por_clave(lista, indice=0):
+    """
+    Uso: Agrupa una lista por una clave en el indice especificado.
+    Entrada:
+        lista <List>
+        indice <Integer>: indice de la clave en la lista.
+    Salida: lista <List> agrupada por clave.
+    """
+    listaIndice = list(map(lambda x: x[indice], lista))
+    values = unique_items(listaIndice)
+    return [[y for y in lista if y[indice] == x] for x in values]
+
+
+def dicc_agrupar_por_clave_indice(lista, indice=0):
+    """
+    Uso:
+        Genera un diccionario. En la lista de claves hay multiples items
+        repetidos, entonces los valores se agrupan.
+    Entrada:
+        claves <List[string]>
+        valores <List>
+    Salida:
+        Diccionario con valores agrupados por clave <dict>
+    """
+    diccionario = dict()
+    for a, b in zip(list(map(lambda x: x[indice], lista)), list(map(lambda x: x.pop(indice), lista))):
+        if a in diccionario:
+            diccionario[a].append(b)
+        else:
+            diccionario[a] = list()
+            diccionario[a].append(b)
+    return diccionario
+
+
+def dicc_agrupar_por_clave(claves, valores):
+    """
+    Uso:
+        Genera un diccionario. En la lista de claves hay multiples items
+        repetidos, entonces los valores se agrupan.
+    Entrada:
+        claves <List[string]>
+        valores <List>
+    Salida:
+        Diccionario con valores agrupados por clave <dict>
+    """
+    diccionario = dict()
+    for a, b in zip(claves, valores):
+        if a in diccionario:
+            diccionario[a].append(b)
+        else:
+            diccionario[a] = list()
+            diccionario[a].append(b)
+    return diccionario
+
+
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # Listados
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 def listado_builtincategory():
     """
-    Uso:
-    Entrada:
-    Salida:
+    Uso: Listado de las BuiltInCategory de Revit.
     """
-    return System.Enum.GetValues(BuiltInCategory)  # 1125
+    return System.Enum.GetValues(BuiltInCategory)
 
 
 def listado_builtinparameter():
     """
-    Uso:
-    Entrada:
-    Salida:
+    Uso: Listado de las BuiltInParameter de Revit.
     """
-    return System.Enum.GetValues(BuiltInParameter)  # 1125
+    return System.Enum.GetValues(BuiltInParameter)
 
 
 def listado_categorias():
     """
     Uso: Genera un diccionario con todas las categorias de Revit.
-    Entrada: Sin argumentos
-    Salida: Diccionario(nombre, categoria)
+    Salida: Diccionario(clave: nombre, valor: categoria)
     """
     diccionario = {}
-    categorias = doc.Settings.Categories  # 351
+    categorias = doc.Settings.Categories
     for cat in categorias:
         diccionario[cat.Name] = cat
     return diccionario
@@ -122,19 +183,35 @@ def listado_plantillas_vista(documento=doc):
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # Filtros
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-def bic_por_nombreVisual(nombre):
+def bic_por_nombrevisual(nombre):
+    """
+    Uso: Busca la BuiltInCategory que coincide con el nombre dado.
+    Entrada: Nombre de la categoria a buscar <string>.
+    Salida: BuiltInCategory <BuiltInCategory>.
+    """
     values = System.Enum.GetValues(BuiltInCategory)
 
-    def catch(default, function, *args, **kwargs):
-        try: return function(*args, **kwargs)
-        except: return default
+    # noinspection PyBroadException
+    def evitar_error(default, function, *args, **kwargs):
+        """
+        Uso: Sustituye un posible error devuelto por la función aplicada por None.
+        """
+        try:
+            return function(*args, **kwargs)
+        except:
+            return default
 
-    valuesRevit = map(lambda x: catch(None, LabelUtils.GetLabelFor, x), values)
-    dictionary = dict(zip(valuesRevit, values))
+    values_revit = map(lambda x: evitar_error(None, LabelUtils.GetLabelFor, x), values)
+    dictionary = dict(zip(values_revit, values))
     return dictionary[nombre]
 
 
-def bic_por_nombreBuilt(nombre):
+def bic_por_nombrebuilt(nombre):
+    """
+    Uso: Busca la BuiltInCategory que coincide con el nombre dado.
+    Entrada: Nombre de la BuiltInCategory (a partir del punto) a buscar <string>.
+    Salida: BuiltInCategory <BuiltInCategory>.
+    """
     values = System.Enum.GetValues(BuiltInCategory)
     names = System.Enum.GetNames(BuiltInCategory)
 
@@ -142,19 +219,34 @@ def bic_por_nombreBuilt(nombre):
     return dictionary[nombre]
 
 
-def bip_por_nombreVisual(nombre):
+def bip_por_nombrevisual(nombre):
+    """
+    Uso: Busca el BuiltInParameter que coincide con el nombre dado.
+    Entrada: Nombre del parametro a buscar <string>.
+    Salida: BuiltInParameter <BuiltInParameter>.
+    """
     values = System.Enum.GetValues(BuiltInParameter)
 
-    def catch(default, function, *args, **kwargs):
-        try: return function(*args, **kwargs)
-        except: return default
+    def evitar_error(default, function, *args, **kwargs):
+        """
+        Uso: Sustituye un posible error devuelto por la función aplicada por None.
+        """
+        try:
+            return function(*args, **kwargs)
+        except:
+            return default
 
-    valuesRevit = map(lambda x: catch(None, LabelUtils.GetLabelFor, x), values)
-    dictionary = dict(zip(valuesRevit, values))
+    values_revit = map(lambda x: evitar_error(None, LabelUtils.GetLabelFor, x), values)
+    dictionary = dict(zip(values_revit, values))
     return dictionary[nombre]
 
 
-def bip_por_nombreBuilt(nombre):
+def bip_por_nombrebuilt(nombre):
+    """
+    Uso: Busca el BuiltInParameter que coincide con el nombre dado.
+    Entrada: Nombre del BuiltInParameter (a partir del punto) a buscar <string>.
+    Salida: BuiltInParameter <BuiltInParameter>.
+    """
     values = System.Enum.GetValues(BuiltInParameter)
     names = System.Enum.GetNames(BuiltInParameter)
 
@@ -162,14 +254,13 @@ def bip_por_nombreBuilt(nombre):
     return dictionary[nombre]
 
 
-def parUser_por_nombre(nombre):
+def paruser_por_nombre(nombre):
     """
-    Uso:
-        Obtiene un parametro de usuario por nombre.
-    Entrada:
-        nombre <str>: Nombre del parametro.
-    Salida: Shared Parameter
+    Uso: Obtiene un parametro de usuario por nombre.
+    Entrada: nombre <str>: Nombre del parametro.
+    Salida: Id del parametro <ElementId>.
     """
+    par = None
     iterador = doc.ParameterBindings().ForwardIterator()
     while iterador.MoveNext():
         if iterador.Key.Name == nombre:
@@ -177,15 +268,15 @@ def parUser_por_nombre(nombre):
     return par
 
 
-def filtroParametroPers(nombre, valor):
+def filtro_parametro_pers(nombre, valor):
     """
-    Uso:
-        Crea un filtro para el FilteredElementCollector
+    Uso: Crea un filtro para el FilteredElementCollector.
     Entrada:
-        nombre <str>: Nombre del parametro.
-        valor <str>: Valor del parametro.
+        nombre <str>: Nombre del parametro
+        valor <str>: Valor del parametro
     Salida: Filtro para aplicar en FilteredElementCollector con .WherePasses()
     """
+    proveedor = None
     iterador = doc.ParameterBindings().ForwardIterator()
     while iterador.MoveNext():
         if iterador.Key.Name == nombre:
@@ -276,13 +367,15 @@ def catch(default, function, *args, **kwargs):
         Atrapa errores convirtiendolos en Null. Para map() o list
         comprehension sin fallos.
     Entrada:
-        default: Sustituto del error.
-        function: Funcion (sin parentesis).
-        *args = Elemento sobre el que aplicar la funcion.
+        default: Sustituto del error
+        function: Funcion (sin parentesis)
+        *args = Elemento sobre el que aplicar la funcion
     Salida: Filtro para aplicar en FilteredElementCollector con .WherePasses()
     """
-    try: return function(*args, **kwargs)
-    except: return default
+    try:
+        return function(*args, **kwargs)
+    except:
+        return default
 
 
 def parametro_valor(par):
@@ -303,7 +396,8 @@ def parametro_valor(par):
             valor = doc.GetElement(par.AsElementId())
         else:
             valor = par.AsValueString()
-    else: valor = None
+    else:
+        valor = None
     return valor
 
 
@@ -319,27 +413,6 @@ def valor_parametro_multiple(e, nombre):
             return par.AsString()
 
 
-def diccionario_agrupar_por_clave(claves, valores):
-    """
-    Uso:
-        Genera un diccionario. En la lista de claves hay multiples items
-        repetidos, por lo tanto los valores se agrupan.
-    Entrada:
-        claves <List[string]>
-        valores <List>
-    Salida:
-        Diccionario con valores agrupados por clave <dict>
-    """
-    diccionario = dict()
-    for a, b in zip(claves, valores):
-        if a in diccionario:
-            diccionario[a].append(b)
-        else:
-            diccionario[a] = list()
-            diccionario[a].append(b)
-    return diccionario
-
-
 def obtener_tipo(elemento):
     """
     Uso: Obtiene el tipo desde un elemento.
@@ -348,7 +421,7 @@ def obtener_tipo(elemento):
     return tipo
 
 
-def punto_XYZ(x=0, y=0, z=0):
+def punto_xyz(x=0, y=0, z=0):
     """
     Uso: Crea un XYZ() en metros, y lo convierte a unidades internas.
     Cuidado: Dependencia de la funcion unidades_modelo_a_internas_longitud().
@@ -381,8 +454,11 @@ def natural_keys(texto):
     """
     from re import split
 
-    def atoi(texto):
-        return int(texto) if texto.isdigit() else texto
+    def atoi(texto1):
+        """
+        Uso: Convierte un texto numero si es numero.
+        """
+        return int(texto1) if texto1.isdigit() else texto1
 
     return [atoi(c) for c in split(r'(\d+)', texto)]
 
@@ -432,7 +508,8 @@ def vista_definir_vista_activa(vista):
 
 def id_tipo_familia_vista():
     """
-    Uso: Obtiene el id de la familia de vista dada.
+    Uso: Diccionario de tipos de vista. Devuelve el id del tipo.
+         Ejemplo: id_tipo_familia_vista()['Tipo de vista'] = idVista
     """
     colector = (FilteredElementCollector(doc).OfClass(ViewFamilyType).
                 ToElements())
@@ -441,9 +518,9 @@ def id_tipo_familia_vista():
     return dict(zip(nombres, ids))
 
 
-def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
+def limpieza_vistas_sin_uso(inicio, prefijo='', opcion_tablas=True):
     """
-    Uso: Se eliminan las vistas sin uso, teniendo en cuenta anfitrio de vistas 
+    Uso: Se eliminan las vistas sin uso, teniendo en cuenta anfitrio de vistas.
     dependientes, de llamada...
     Entrada: inicio <boolean>
     Salida: Resultado
@@ -458,16 +535,17 @@ def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
 
         # Reviso la dependencia
         idsDepen = [doc.GetElement(v).GetPrimaryViewId() for v in idsUsados]
-        for id in idsDepen:
-            if str(id) != '-1' and id not in idsUsados: 
-                idsUsados.append(id)
+        for idNum in idsDepen:
+            if str(idNum) != '-1' and idNum not in idsUsados:
+                idsUsados.append(idNum)
 
         # Reviso callouts
-        idsCalloutanfi = [doc.GetElement(id).get_Parameter(BuiltInParameter.SECTION_PARENT_VIEW_NAME) for id in idsUsados]
+        idsCalloutanfi = [doc.GetElement(idNum).get_Parameter(BuiltInParameter.SECTION_PARENT_VIEW_NAME) for idNum in
+                          idsUsados]
         for parametro in idsCalloutanfi:
-            if parametro != None:
-                id = parametro.AsElementId()
-                if id != ElementId(-1) and id not in idsUsados:
+            if parametro is not None:
+                idNum = parametro.AsElementId()
+                if idNum != ElementId(-1) and idNum not in idsUsados:
                     idsUsados.append(parametro.AsElementId())
 
         # Se incorporan los planos
@@ -475,7 +553,7 @@ def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
             idsUsados.append(plano.Id)
 
         # Se trabaja con las tablas
-        if opcionTablas:
+        if opcion_tablas:
             # Se conservan las tablas
             tablas = FilteredElementCollector(doc).OfClass(ViewSchedule).ToElements()
             if tablas:
@@ -486,15 +564,16 @@ def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
             tablas = FilteredElementCollector(doc).OfClass(ScheduleSheetInstance)
             if tablas:
                 for t in tablas:
-                    idsUsados.append(t.ScheduleId)            
+                    idsUsados.append(t.ScheduleId)
 
-        # Colectar todas las vistas
+                    # Colectar todas las vistas
         vistas = FilteredElementCollector(doc).OfClass(View).ToElements()
         # Descartar plantillas de vistas
         vistasIds = []
         for v in vistas:
             if v.IsTemplate is False:
-                if v.Name.startswith(prefijo) is False and v.ViewType != ViewType.SystemBrowser and v.ViewType != ViewType.ProjectBrowser:
+                if v.Name.startswith(prefijo) is False \
+                        and v.ViewType != ViewType.SystemBrowser and v.ViewType != ViewType.ProjectBrowser:
                     vistasIds.append(v.Id)
 
         # Resto la lista que quiero mantener a la de vistas a eliminar
@@ -505,12 +584,13 @@ def limpieza_vistas_sin_uso(inicio, prefijo='', opcionTablas=True):
         contador = 0
         if idsNoUsados:
             TransactionManager.Instance.EnsureInTransaction(doc)
-            for id in idsNoUsados:
+            for idNum in idsNoUsados:
                 try:
-                    doc.Delete(id)
-                    contador = contador + 1
-                except:
-                    pass
+                    doc.Delete(idNum)
+                    contador += 1
+                except Exception:
+                    raise
+
             TransactionManager.Instance.TransactionTaskDone()
 
         if contador == 0 and len(idsNoUsados) != 0:
@@ -562,14 +642,14 @@ def limpieza_plantillas_vista(inicio):
 def vista_crear_plantilla(lista):
     """
     Uso:
-        Crear una o varias plantilla/s de vista partiendo de una
+        Crear, una o varias, plantilla/s de vista partiendo de una
         o multiples vistas.
     Entrada:
         lista <>: Desconocemos si nos dan una vista o una lista de vistas.
-    Salida: Plantilla/s de vista creada/s.
+    Salida: Plantilla/s de vista generada/s.
     Cuidado: Dependencia de la funcion aLista().
     """
-    vistas = aLista(lista)
+    vistas = a_lista(lista)
     TransactionManager.Instance.EnsureInTransaction(doc)
     salida = [vista.CreateViewTemplate() for vista in vistas]
     TransactionManager.Instance.TransactionTaskDone()
@@ -580,12 +660,12 @@ def graficos_aislar_elementos_temporal(lista, vista=doc.ActiveView):
     """
     Uso: 
     Entrada:
-        lista <>: Desconocemos si nos daran una vista o una lista de vistas.
-        vista <View>: valor por defecto la vista activa.
+        lista <>: Desconocemos si nos daran una vista o una lista de vistas
+        vista <View>: valor por defecto la vista activa
     Salida: Mensaje exito/fallo.
     Cuidado: Dependencia de la funcion aLista().
     """
-    elementos = aLista(lista)
+    elementos = a_lista(lista)
     idsLista = List[ElementId]()
     for e in elementos:
         idsLista.Add(e.Id)
@@ -603,12 +683,12 @@ def graficos_aislar_elementos(lista, vista=doc.ActiveView):
     """
     Uso:
     Entrada:
-        lista <>: Desconocemos si nos daran una vista o una lista de vistas.
-        vista <View>: valor por defecto la vista activa.
+        lista <>: Desconocemos si nos daran una vista o una lista de vistas
+        vista <View>: defecto vista activa
     Salida: Mensaje exito/fallo.
     Cuidado: Dependencia de la funcion aLista().
     """
-    elementos = aLista(lista)
+    elementos = a_lista(lista)
     idsLista = List[ElementId]()
     for e in elementos:
         idsLista.Add(e.Id)
@@ -640,21 +720,21 @@ def vista_duplicar(lista, opciones=1, prefijo='', sufijo=''):
     """
     Uso:
     Entrada:
-        lista <>: Desconocemos si nos daran una vista o una lista de vistas.
-        opciones <int>: Opciones de duplicado.
-        prefijo <str>: Prefijo para el nombre de la vista.
-        sufijo <str>: Prefijo para el nombre de la vista.
+        lista <>: Desconocemos si nos daran una vista o una lista de vistas
+        opciones <int>: Opciones de duplicado, defecto 1
+        prefijo <str>: Prefijo para el nombre de la vista, defecto ''
+        sufijo <str>: Prefijo para el nombre de la vista, defecto ''
     Salida: Mensaje exito/fallo.
     Cuidado: Dependencia de la funcion aLista() y vista_opciones_duplicado().    
     """
-    vistas = aLista(lista)
+    vistas = a_lista(lista)
 
     salida = []
     TransactionManager.Instance.EnsureInTransaction(doc)
     for vista in vistas:
         if not vista.IsTemplate:
-            id = vista.Duplicate(vista_opciones_duplicado(opciones))
-            nueva = doc.GetElement(id)
+            idNum = vista.Duplicate(vista_opciones_duplicado(opciones))
+            nueva = doc.GetElement(idNum)
             try:
                 nueva.Name = str(prefijo) + vista.Name + str(sufijo)
             except:
@@ -669,37 +749,37 @@ def vista_consultar_modificaciones_filtros(vista):
     """
     Uso:
         Se revisa la vista y se extrae la informacion sobre los filtros y que
-        modificaciones se estan haciendo en la visibilidad grafica.
+        modificaciones hay en la visibilidad grafica.
     Entradas:
         vista <View>: Vista a revisar
     Salida:
         Se genera un diccionario con diccionarios anidados, para acceder por
         clave a cualquier configuracion dentro de cualquier filtro.
-    """     
+    """
     salida = dict()
     if isinstance(vista, View) and vista.IsTemplate is False:
         try:
             # Se buscan los filtros
             filtros = vista.GetFilters()
-            # Se condiciona el siguiente paso: deben haber filtros
+            # Se condiciona el siguiente paso: debe haber filtros
             if filtros:
-                for id in filtros:
+                for idNum in filtros:
                     datos = dict()
                     # Se consulta el nombre
                     # Sera la clave para acceder al filtro
-                    filtro = doc.GetElement(id)
+                    filtro = doc.GetElement(idNum)
                     nombreFiltro = filtro.Name
                     # Se consulta si esta visible y activo el filtro
-                    datos['Visible'] = vista.GetFilterVisibility(id)
-                    datos['Activo'] = vista.GetIsFilterEnabled(id)
+                    datos['Visible'] = vista.GetFilterVisibility(idNum)
+                    datos['Activo'] = vista.GetIsFilterEnabled(idNum)
 
                     # Se accede a las modificaciones
-                    configuracion = vista.GetFilterOverrides(id)
+                    configuracion = vista.GetFilterOverrides(idNum)
                     # Se va a generar un sistema de diccionarios anidados
 
                     # Informacion de proyeccion
                     proyeccion = dict()
-                    # Informacion de las lineas
+                    # Informacion lineas
                     lineasProyeccion = dict()
                     lineasProyeccion['Patrón'] = (
                         configuracion.ProjectionLinePatternId)
@@ -708,7 +788,7 @@ def vista_consultar_modificaciones_filtros(vista):
                             configuracion.ProjectionLineColor))
                     lineasProyeccion['Grosor'] = (
                         configuracion.ProjectionLineWeight)
-                    # Se almacena la informacion de las lineas de proyeccion
+                    # Se almacena la informacion lineas de proyeccion
                     proyeccion['Líneas'] = lineasProyeccion
                     # Informacion de los patrones de superficie
                     patronesProyeccion = dict()
@@ -728,7 +808,7 @@ def vista_consultar_modificaciones_filtros(vista):
                     patronesProyeccion['Fondo - Color'] = (
                         color_consultar_rgb(
                             configuracion.CutForegroundPatternColor))
-                    # Se almacena la informacion de las lineas de proyeccion
+                    # Se almacena la informacion lineas de proyeccion
                     proyeccion['Patrones'] = patronesProyeccion
                     # Tercero: transparencia
                     proyeccion['Transparencia'] = configuracion.Transparency
@@ -737,7 +817,7 @@ def vista_consultar_modificaciones_filtros(vista):
 
                     # Informacion de corte
                     corte = dict()
-                    # Informacion de las lineas
+                    # Informacion lineas
                     lineasCorte = dict()
                     lineasCorte['Patrón'] = (
                         configuracion.CutLinePatternId)
@@ -745,7 +825,7 @@ def vista_consultar_modificaciones_filtros(vista):
                         color_consultar_rgb(configuracion.CutLineColor))
                     lineasCorte['Grosor'] = (
                         configuracion.CutLineWeight)
-                    # Se almacena la informacion de las lineas de proyeccion
+                    # Se almacena la informacion lineas de proyeccion
                     corte['Líneas'] = lineasCorte
                     # Informacion de los patrones de superficie
                     patronesCorte = dict()
@@ -765,7 +845,7 @@ def vista_consultar_modificaciones_filtros(vista):
                     patronesCorte['Fondo - Color'] = (
                         color_consultar_rgb(
                             configuracion.CutBackgroundPatternColor))
-                    # Se almacena la informacion de las lineas de proyeccion
+                    # Se almacena la informacion lineas de proyeccion
                     corte['Patrones'] = patronesCorte
                     # Se almacena toda la informacion relativa a corte
                     datos['Corte'] = corte
@@ -776,7 +856,7 @@ def vista_consultar_modificaciones_filtros(vista):
             else:
                 salida = 'No hay filtros aplicados en la vista.'
         except:
-           salida = 'No se puede aplicar \nfiltros a esta vista.'
+            salida = 'No se puede aplicar \nfiltros a esta vista.'
     else:
         salida = ('Se esperaba una vista.\n'
                   'Revisar si es una plantilla de vista.')
@@ -795,13 +875,18 @@ def seccion_paralela_por_curva(curva, desfase, altura):
     # Convierto unidades a internas
     o = unidades_modelo_a_internas_longitud(float(desfase))
     h = unidades_modelo_a_internas_longitud(float(altura))
+    # Revisar el tipo de curva
+    # Si es una curva de Dynamo, la pasamos a Revit
+    if isinstance(curva, Autodesk.DesignScript.Geometry.Line):
+        c = curva.ToRevitType()
+    else:
+        c = curva
 
-    bbMax = XYZ(curva.GetEndPoint(1).X + desfase, curva.GetEndPoint(0).X - desfase, h + desfase)
-    bbMin = XYZ(curva.GetEndPoint(1).X + desfase, curva.GetEndPoint(0).X - desfase, h + desfase)
-    i = curva.GetEndPoint(0) # XYZ
-    f = curva.GetEndPoint(1) # XYZ
-    d = f - i # XYZ
-    l = d.GetLength()
+    # Obtener los puntos
+    i = c.GetEndPoint(0)  # XYZ
+    f = c.GetEndPoint(1)  # XYZ
+    d = f - i  # XYZ
+    long = d.GetLength()
 
     # Definir los ejes
     x = d.Normalize()
@@ -810,7 +895,7 @@ def seccion_paralela_por_curva(curva, desfase, altura):
 
     # Crear una instancia de la clase Transform
     t = Transform.Identity
-    t.Origin = i + 0.5*d
+    t.Origin = i + 0.5 * d
     t.BasisX = x
     t.BasisY = y
     t.BasisZ = z
@@ -818,8 +903,8 @@ def seccion_paralela_por_curva(curva, desfase, altura):
     # Creamos BoundingBox
     caja = BoundingBoxXYZ()
     caja.Transform = t
-    caja.Min = XYZ(- (0.5*l + o), i.Z - o, - o)
-    caja.Max = XYZ(0.5*l + o, h + o, o)
+    caja.Min = XYZ(- (0.5 * long + o), i.Z - o, - o)
+    caja.Max = XYZ(0.5 * long + o, h + o, o)
 
     idTipoFamilia = id_tipo_familia_vista()['Section']
 
@@ -843,12 +928,17 @@ def seccion_perpendicular_por_curva(curva, desfase, altura):
     o = unidades_modelo_a_internas_longitud(float(desfase))
     h = unidades_modelo_a_internas_longitud(float(altura))
 
-    bbMax = XYZ(curva.GetEndPoint(1).X + desfase, curva.GetEndPoint(0).X - desfase, h + desfase)
-    bbMin = XYZ(curva.GetEndPoint(1).X + desfase, curva.GetEndPoint(0).X - desfase, h + desfase)
-    i = curva.GetEndPoint(0) # XYZ
-    f = curva.GetEndPoint(1) # XYZ
-    d = f - i # XYZ
-    l = d.GetLength()
+    # Revisar el tipo de curva
+    # Si es una curva de Dynamo, la pasamos a Revit
+    if isinstance(curva, Autodesk.DesignScript.Geometry.Line):
+        c = curva.ToRevitType()
+    else:
+        c = curva
+
+    i = c.GetEndPoint(0)  # XYZ
+    f = c.GetEndPoint(1)  # XYZ
+    d = f - i  # XYZ
+    # l = d.GetLength()  # Obtener la longiud
 
     # Definir los ejes
     z = d.Normalize()
@@ -857,7 +947,7 @@ def seccion_perpendicular_por_curva(curva, desfase, altura):
 
     # Crear una instancia de la clase Transform
     t = Transform.Identity
-    t.Origin = i + 0.5*d
+    t.Origin = i + 0.5 * d
     t.BasisX = x
     t.BasisY = y
     t.BasisZ = z
@@ -882,47 +972,51 @@ def seccion_perpendicular_por_curva(curva, desfase, altura):
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 def unidades_internas_a_modelo_longitud(valor):
     """
+    Uso: Convierte unidades internas de longitud a unidades de modelo
     """
     if int(doc.Application.VersionNumber) >= 2022:
-        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId()     
-        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)        
-    else: 
-        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Length).DisplayUnits     
+        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId()
+        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)
+    else:
+        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Length).DisplayUnits
         return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)
 
 
 def unidades_internas_a_modelo_area(valor):
     """
+    Uso: Convierte unidades internas de area a unidades de modelo
     """
     if int(doc.Application.VersionNumber) >= 2022:
-        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Area).GetUnitTypeId()     
-        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)        
-    else: 
-        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Area).DisplayUnits     
-        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)  
+        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Area).GetUnitTypeId()
+        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)
+    else:
+        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Area).DisplayUnits
+        return UnitUtils.ConvertFromInternalUnits(valor, unidadModelo)
 
 
 def unidades_modelo_a_internas_longitud(valor):
     """
+    Uso: Convierte unidades de modelo de longitud a unidades internas
     """
     if int(doc.Application.VersionNumber) >= 2022:
-        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId()     
-        return UnitUtils.ConvertToInternalUnits(valor, unidadModelo)        
-    else: 
-        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Length).DisplayUnits     
+        unidadModelo = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId()
+        return UnitUtils.ConvertToInternalUnits(valor, unidadModelo)
+    else:
+        unidadModelo = doc.GetUnits().GetFormatOptions(UnitType.UT_Length).DisplayUnits
         return UnitUtils.ConvertToInternalUnits(valor, unidadModelo)
 
-                                        
+
 def cm_a_internas_longitud(valor):
     """
+    Uso: Convierte cm a unidades internas
     """
-    if int(doc.Application.VersionNumber) >= 2022:     
+    if int(doc.Application.VersionNumber) >= 2022:
         return UnitUtils.ConvertToInternalUnits(valor, UnitType.Centimeters)
-    else: 
+    else:
         return UnitUtils.ConvertToInternalUnits(valor, DisplayUnitType.DUT_CENTIMETERS)
-  
 
-def convertir_XYZ_unidad_interna(punto): 
+
+def convertir_xyz_unidad_interna(punto):
     """
     Uso: Crea un XYZ() en metros, y lo convierte a unidades internas.
     Cuidado: Dependencia de la funcion unidades_modelo_a_internas_longitud().
